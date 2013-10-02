@@ -1,4 +1,5 @@
 <script src="http://d3lp1msu2r81bx.cloudfront.net/kjs/js/lib/kinetic-v4.5.5.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/mousetrap/1.2.2/mousetrap.min.js"></script>
 <style>
     #canvas {
         cursor: crosshair;
@@ -44,15 +45,12 @@
         <h1 id="question">Question</h1> <!-- The question will be loaded here -->
 
 
-        <div > <!-- Start DIV for the control buttons -->
-        <button id="play-pause" class="btn btn-large btn-success btn-control" value='play-pause'><i class="icon-pause"></i> Pause</button>
-        </div> <!-- Start DIV for the control buttons -->
         <div id="controls" class="btn-group" style="margin-top:5px;"> <!-- Start DIV for the control buttons -->
-            <button class="btn btn-control" value='frame_bkw'><i class="icon-minus"></i> Decrease speed</button>
-            <button class="btn btn-control" value='frame_fwd'><i class="icon-plus"></i> Increase speed</button>
-            <button class="btn btn-control" value='frame_reset'><i class="icon-plus"></i> Reset speed</button>
+            <button class="btn btn-control" value='previous_frame'><i class="icon-backward"></i> Previous frame</button>
+            <button class="btn btn-control" value='next_frame'><i class="icon-forward"></i> Next frame</button>
         </div> <!-- Start DIV for the control buttons -->
         <br/> 
+        <p> Current frame  <span id="current_frame" class="badge badge-warning">0</span></p>
         <p class="lead"> You have found  <span id="number-of-tracks" class="badge badge-info">0</span> tracks
         </p> 
         <button class="btn btn-answer" value='save'><i class="icon-save"></i> Save drawn tracks</button>
@@ -112,7 +110,7 @@ var colors = ['rgb(31,119,180)', 'rgb(255,127,14)', 'rgb(44,160,44)', 'rgb(214,3
 var colorIndex = 0;
 
 function loadUserProgress() {
-    pybossa.userProgress('antimatter').done(function(data){
+    pybossa.userProgress('antimatterbeta').done(function(data){
         var pct = Math.round((data.done*100)/data.total);
         $("#progress").css("width", pct.toString() +"%");
         $("#progress").attr("title", pct.toString() + "% completed!");
@@ -171,17 +169,46 @@ function unscale(track, width, height) {
     return track;
 }
 
+function formatFrame(task) {
+    var frameStr = "00";
+    if (task.frame <= 0) {
+        task.frame = 0;
+        frameStr = "00";
+        return frameStr;
+    }
+
+    if ((task.frame >0) && (task.frame < 10)) {
+        frameStr = "0" + task.frame.toString();
+        return frameStr;
+    }
+    if ((task.frame >= 10) && (task.frame < 40)) {
+        frameStr = task.frame.toString()
+        return frameStr;
+    }
+    else {
+        frameStr = "39";
+        task.frame = 39;
+        return frameStr;
+    }
+}
+
+function loadFrame(task) {
+    task.imageObj.src = task.info.url + formatFrame(task) + '.jpg';
+    task.layer.draw();
+    $("#current_frame").text(String(task.frame));
+}
+
 
 pybossa.presentTask(function(task, deferred) {
     if ( !$.isEmptyObject(task) ) {
         loadUserProgress();
         // KINECT
-        var width =  460;
-        var height = Math.floor(width / 1.21); 
+        task.width =  460;
+        task.height = Math.floor(task.width / 1.21); 
         task.stage = new Kinetic.Stage({
           container: 'canvas',
-          width: width,
-          height: height 
+          width: task.width,
+          height: task.height 
         });
 
         task.layer = new Kinetic.Layer();
@@ -190,10 +217,13 @@ pybossa.presentTask(function(task, deferred) {
         var image = new Kinetic.Image({
             x: 0,
             y: 0,
+            id: 'mainImage',
             image: task.imageObj,
-            width: width,
-            height: height
+            width: task.width,
+            height: task.height
         });
+
+        task.frame = 0;
 
         image.on('mousedown', function () {
             var mousePos = task.stage.getMousePosition();
@@ -251,38 +281,31 @@ pybossa.presentTask(function(task, deferred) {
         // add the layer to the stage
         task.stage.add(task.layer);
          
-        task.currentAnimation = getNewAnimation(task);
-        task.currentAnimation.start();
+        //task.currentAnimation = getNewAnimation(task);
+        //task.currentAnimation.start();
 
         $('.btn-control').off('click').on('click', function(evt) {
             var action = $(evt.target).attr("value");
-            if (action == 'frame_fwd') {
-                if (task.period > 0 ){
-                task.period -= 1;
-                }
+            if (action == 'next_frame') {
+                task.frame += 1;
+                loadFrame(task);
             }
 
-            if (action == 'frame_bkw') {
-                if (task.period < 60 ){
-                task.period += 1;
-                }
+            if (action == 'previous_frame') {
+                task.frame -= 1;
+                loadFrame(task);
             }
+        });
 
-            if (action == 'frame_reset') {
-                task.period += 20;
-            }
+        // Keyboard actions
+        Mousetrap.bind('right', function(e) {
+            task.frame += 1;
+            loadFrame(task);
+        });
 
-
-            if (action == 'play-pause') {
-                if (task.currentAnimation.isRunning()) {
-                    task.currentAnimation.stop();
-                    $("#play-pause").html('<i class="icon-play"></i> Play');
-                }
-                else {
-                    task.currentAnimation.start();
-                    $("#play-pause").html('<i class="icon-pause"></i> Pause');
-                }
-            }
+        Mousetrap.bind('left', function(e) {
+            task.frame -= 1;
+            loadFrame(task);
         });
 
 
@@ -321,5 +344,5 @@ pybossa.presentTask(function(task, deferred) {
     }
 });
 
-pybossa.run('antimatter');
+pybossa.run('antimatterbeta');
 </script>
