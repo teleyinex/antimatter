@@ -44,6 +44,9 @@
     <div class="span6 "><!-- Start of Question and Submission DIV (column) -->
         <h1 id="question">Question</h1> <!-- The question will be loaded here -->
 
+        <div id="addTrack"> <!-- Start DIV for the control buttons -->
+            <button class="btn btn-add-track" value="add_track"><i class="icon icon-plus"></i> Add a track</button>
+        </div>
 
         <div id="controls" class="btn-group" style="margin-top:5px;"> <!-- Start DIV for the control buttons -->
             <button class="btn btn-control" value='previous_frame'><i class="icon-backward"></i> Previous frame</button>
@@ -51,8 +54,10 @@
         </div> <!-- Start DIV for the control buttons -->
         <br/> 
         <p> Current frame  <span id="current_frame" class="badge badge-warning">0</span></p>
-        <p class="lead"> You have found  <span id="number-of-tracks" class="badge badge-info">0</span> tracks
+        <p class="lead"> You have found the following tracks:
         </p> 
+        <div id="tracks">
+        </div>
         <button class="btn btn-answer" value='save'><i class="icon-save"></i> Save drawn tracks</button>
         <!-- Feedback items for the user -->
         <p>You are working now on task: <span id="task-id" class="label label-warning">#</span></p>
@@ -125,8 +130,9 @@ pybossa.taskLoaded(function(task, deferred) {
         task.period = 20;
         task.maxPictures = 40;
         task.minPictures = 0;
-        task.currentTrack = {entry:{x:-1,y:-1,z:0}, exit:{x:-1,y:-1,z:40}};
+        task.currentTrack = {entry:{x:-1, y:-1, z:-1}, exit:{x:-1, y:-1, z:-1}};
         task.tracks = [];
+        task.trackLayers = [];
         deferred.resolve(task);
     }
     else {
@@ -226,6 +232,7 @@ pybossa.presentTask(function(task, deferred) {
         task.frame = 0;
 
         image.on('mousedown', function () {
+            var index = task.trackLayers.length - 1;
             var mousePos = task.stage.getMousePosition();
             var circle = new Kinetic.Circle({
                 x: mousePos.x,
@@ -238,40 +245,42 @@ pybossa.presentTask(function(task, deferred) {
             if (task.currentTrack.entry.x == -1) {
                 task.currentTrack.entry.x = mousePos.x;
                 task.currentTrack.entry.y = mousePos.y;
+                task.currentTrack.entry.z = task.frame;
+                $("#track_bar_" + index).css("width", "33%");
             }
             else {
                 if (task.currentTrack.exit.x == -1) {
                     task.currentTrack.exit.x = mousePos.x;
                     task.currentTrack.exit.y = mousePos.y;
+                    task.currentTrack.exit.z = task.frame;
+                    $("#track_bar_" + index).css("width", "66%");
                 }
             }
-            if ((task.currentTrack.entry.x != -1) && (task.currentTrack.exit.y != -1)){
+
+            if ((task.currentTrack.entry.x != -1) && (task.currentTrack.exit.x != -1)){
                 var newTrack = $.extend(true, {}, task.currentTrack);
 
                 // Draw a line showing the track with the same color
-                var line = new Kinetic.Line({
-                    points: [[newTrack.entry.x, newTrack.entry.y],[newTrack.exit.x, newTrack.exit.y]],
-                    stroke: colors[colorIndex],
-                    });
-                task.layer.add(line);
+                //var line = new Kinetic.Line({
+                //    points: [[newTrack.entry.x, newTrack.entry.y],[newTrack.exit.x, newTrack.exit.y]],
+                //    stroke: colors[colorIndex],
+                //    });
+                //task.layer.add(line);
                 // Unscale the points to save them with the real picture size
                 newTrack = unscale(newTrack, $("#canvas").width(),$("#canvas").height());
                 task.tracks.push(newTrack);
-                $("#number-of-tracks").text(task.tracks.length);
                 task.currentTrack.entry.x = -1;
                 task.currentTrack.entry.y = -1;
+                task.currentTrack.entry.z = -1;
                 task.currentTrack.exit.x = -1;
                 task.currentTrack.exit.y = -1;
-                if (colorIndex < colors.length) {
-                    colorIndex += 1;
-                }
-                else {
-                    colorIndex = 0;
-                }
+                task.currentTrack.exit.z = -1;
             }
 
-            task.layer.add(circle);
-           task.layer.draw();
+            //task.layer.add(circle);
+            task.trackLayers[index].add(circle);
+            task.trackLayers[index].draw();
+           //task.layer.draw();
         });
         task.imageObj.src = task.info.url + "00.jpg";
 
@@ -280,9 +289,47 @@ pybossa.presentTask(function(task, deferred) {
 
         // add the layer to the stage
         task.stage.add(task.layer);
+
+
+        $(".btn-add-track").off('click').on('click', function(evt) {
+            var action = $(evt.target).attr("value");
+            // Change color per track
+            if (colorIndex < colors.length) {
+                colorIndex += 1;
+            }
+            else {
+                colorIndex = 0;
+            }
+
+            if (action == 'add_track') {
+                var tmp = new Kinetic.Layer();
+                task.trackLayers.push(tmp);
+                task.stage.add(tmp);
+                var trackID = task.trackLayers.length - 1;
+                if (trackID == -1) {
+                    trackID = 0;
+                }
+                var track = $("<div/>", {id: "track_" + trackID,
+                                         class: 'progress progress-success'});
+                var bar = $("<div/>", {id: "track_bar_" + trackID, class: 'bar'});
+                bar.css("width", "0%");
+                track.append(bar);
+                //track.text("Trac " + trackID);
+                var btn = $("<button/>", {id: "track_" + trackID,
+                                          class: 'delete-track btn btn-mini btn-danger pull-right'});
+                btn.html("<i class='icon icon-remove'></i>");
+                btn.off('click').on('click', function(){
+                    var trackID = parseInt($(this).attr("id").split("track_")[1]);
+                    task.trackLayers[trackID].destroy();
+                    delete task.trackLayers[trackID];
+                    delete task.tracks[trackID];
+                    $("#track_" + trackID).remove();
+                });
+                track.append(btn);
+                $("#tracks").append(track);
+            }
+        });
          
-        //task.currentAnimation = getNewAnimation(task);
-        //task.currentAnimation.start();
 
         $('.btn-control').off('click').on('click', function(evt) {
             var action = $(evt.target).attr("value");
