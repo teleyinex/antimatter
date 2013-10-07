@@ -44,9 +44,6 @@
     <div class="span6 "><!-- Start of Question and Submission DIV (column) -->
         <h1 id="question">Question</h1> <!-- The question will be loaded here -->
 
-        <div id="addTrack"> <!-- Start DIV for the control buttons -->
-            <button class="btn btn-add-track" value="add_track"><i class="icon icon-plus"></i> Add a track</button>
-        </div>
 
         <div id="controls" class="btn-group" style="margin-top:5px;"> <!-- Start DIV for the control buttons -->
             <button class="btn btn-control" value='previous_frame'><i class="icon-backward"></i> Previous frame</button>
@@ -54,8 +51,29 @@
         </div> <!-- Start DIV for the control buttons -->
         <br/> 
         <p> Current frame  <span id="current_frame" class="badge badge-warning">0</span></p>
-        <p class="lead"> You have found the following tracks:
-        </p> 
+
+        <p class="lead"> You have found the following tracks</p> 
+        <div id="addTrack"> <!-- Start DIV for the control buttons -->
+            <button id="btn-add-track" class="btn btn-add-track" value="add_track"><i class="icon icon-plus"></i> Add a track</button>
+        </div>
+
+        <p id="track-start" style="display:none"> <strong>Mark the start of the current track</strong></p>
+        <p id="track-exit" style="display:none"> <strong>Mark the exit of the current track</strong></p>
+        <div id="track-type" style="display:none"> 
+            <p><strong>Can you count the number of particles in the track?</strong></p>
+            <div class="btn-group">
+                <button class="btn btn-mini track-type" value="thin"> Yes</button>
+                <button class="btn btn-mini track-type" value="fat"> No</button>
+            </div>
+        </div>
+        <div id="track-number-particles" style="display:none"> 
+            <p>How many particles do you count?</p>
+            <div class="input-append">
+                <input id="input-track-number-particles" class="span1" type="text"></input>
+                <button id="save-track-number-particles" class="btn" type="button"> Done!</button>
+            </div>
+        </div>
+
         <div id="tracks">
         </div>
         <button class="btn btn-answer" value='save'><i class="icon-save"></i> Save drawn tracks</button>
@@ -125,14 +143,31 @@ function loadUserProgress() {
     });
 }
 
+function addTrack(task){
+    if ((task.currentTrack.entry.x != -1) && (task.currentTrack.exit.x != -1)){
+    var newTrack = $.extend(true, {}, task.currentTrack);
+    // Unscale the points to save them with the real picture size
+    newTrack = unscale(newTrack, $("#canvas").width(),$("#canvas").height());
+    task.tracks.push(newTrack);
+    task.currentTrack.entry.x = -1;
+    task.currentTrack.entry.y = -1;
+    task.currentTrack.entry.z = -1;
+    task.currentTrack.exit.x = -1;
+    task.currentTrack.exit.y = -1;
+    task.currentTrack.exit.z = -1;
+    task.currentTrack.n_particles = -1;
+    }
+}
+
 pybossa.taskLoaded(function(task, deferred) {
     if ( !$.isEmptyObject(task) ) {
         task.period = 20;
         task.maxPictures = 40;
         task.minPictures = 0;
-        task.currentTrack = {entry:{x:-1, y:-1, z:-1}, exit:{x:-1, y:-1, z:-1}};
+        task.currentTrack = {entry:{x:-1, y:-1, z:-1}, exit:{x:-1, y:-1, z:-1}, n_particles:-1};
         task.tracks = [];
         task.trackLayers = [];
+        task.step = "start-exit";
         deferred.resolve(task);
     }
     else {
@@ -232,55 +267,45 @@ pybossa.presentTask(function(task, deferred) {
         task.frame = 0;
 
         image.on('mousedown', function () {
-            var index = task.trackLayers.length - 1;
-            var mousePos = task.stage.getMousePosition();
-            var circle = new Kinetic.Circle({
-                x: mousePos.x,
-                y: mousePos.y,
-                radius: 2,
-                fill: colors[colorIndex],
-                stroke: colors[colorIndex],
-                strokeWidth: 4
-            });
-            if (task.currentTrack.entry.x == -1) {
-                task.currentTrack.entry.x = mousePos.x;
-                task.currentTrack.entry.y = mousePos.y;
-                task.currentTrack.entry.z = task.frame;
-                $("#track_bar_" + index).css("width", "33%");
-            }
-            else {
-                if (task.currentTrack.exit.x == -1) {
-                    task.currentTrack.exit.x = mousePos.x;
-                    task.currentTrack.exit.y = mousePos.y;
-                    task.currentTrack.exit.z = task.frame;
-                    $("#track_bar_" + index).css("width", "66%");
+            if (task.step == "start-exit") {
+                var index = task.trackLayers.length - 1;
+                var mousePos = task.stage.getMousePosition();
+                var circle = new Kinetic.Circle({
+                    x: mousePos.x,
+                    y: mousePos.y,
+                    radius: 2,
+                    fill: colors[colorIndex],
+                    stroke: colors[colorIndex],
+                    strokeWidth: 4
+                });
+                if (task.currentTrack.entry.x == -1) {
+                    task.currentTrack.entry.x = mousePos.x;
+                    task.currentTrack.entry.y = mousePos.y;
+                    task.currentTrack.entry.z = task.frame;
+                    $("#track_bar_" + index).css("width", "33%");
+                    // Hide previous tooltip, and show new one
+                    $("#track-start").hide();
+                    $("#track-exit").show();
                 }
+                else {
+                    if (task.currentTrack.exit.x == -1) {
+                        task.currentTrack.exit.x = mousePos.x;
+                        task.currentTrack.exit.y = mousePos.y;
+                        task.currentTrack.exit.z = task.frame;
+                        $("#track_bar_" + index).css("width", "66%");
+                        // Hide previous tooltip, and show new one
+                        $("#track-exit").hide();
+                        $("#track-type").show();
+                        task.step = "categorize-track";
+                    }
+                }
+
+
+                //task.layer.add(circle);
+                task.trackLayers[index].add(circle);
+                task.trackLayers[index].draw();
+                //task.layer.draw();
             }
-
-            if ((task.currentTrack.entry.x != -1) && (task.currentTrack.exit.x != -1)){
-                var newTrack = $.extend(true, {}, task.currentTrack);
-
-                // Draw a line showing the track with the same color
-                //var line = new Kinetic.Line({
-                //    points: [[newTrack.entry.x, newTrack.entry.y],[newTrack.exit.x, newTrack.exit.y]],
-                //    stroke: colors[colorIndex],
-                //    });
-                //task.layer.add(line);
-                // Unscale the points to save them with the real picture size
-                newTrack = unscale(newTrack, $("#canvas").width(),$("#canvas").height());
-                task.tracks.push(newTrack);
-                task.currentTrack.entry.x = -1;
-                task.currentTrack.entry.y = -1;
-                task.currentTrack.entry.z = -1;
-                task.currentTrack.exit.x = -1;
-                task.currentTrack.exit.y = -1;
-                task.currentTrack.exit.z = -1;
-            }
-
-            //task.layer.add(circle);
-            task.trackLayers[index].add(circle);
-            task.trackLayers[index].draw();
-           //task.layer.draw();
         });
         task.imageObj.src = task.info.url + "00.jpg";
 
@@ -293,15 +318,18 @@ pybossa.presentTask(function(task, deferred) {
 
         $(".btn-add-track").off('click').on('click', function(evt) {
             var action = $(evt.target).attr("value");
-            // Change color per track
-            if (colorIndex < colors.length) {
-                colorIndex += 1;
-            }
-            else {
-                colorIndex = 0;
-            }
 
             if (action == 'add_track') {
+                $("#btn-add-track").hide();
+                // Show action to do
+                $("#track-start").show();
+                // Change color per track
+                if (colorIndex < colors.length) {
+                    colorIndex += 1;
+                }
+                else {
+                    colorIndex = 0;
+                }
                 var tmp = new Kinetic.Layer();
                 task.trackLayers.push(tmp);
                 task.stage.add(tmp);
@@ -310,7 +338,7 @@ pybossa.presentTask(function(task, deferred) {
                     trackID = 0;
                 }
                 var track = $("<div/>", {id: "track_" + trackID,
-                                         class: 'progress progress-success'});
+                                         class: 'progress progress-info'});
                 var bar = $("<div/>", {id: "track_bar_" + trackID, class: 'bar'});
                 bar.css("width", "0%");
                 track.append(bar);
@@ -326,8 +354,35 @@ pybossa.presentTask(function(task, deferred) {
                     $("#track_" + trackID).remove();
                 });
                 track.append(btn);
-                $("#tracks").append(track);
+                $("#tracks").prepend(track);
             }
+        });
+
+        $('.track-type').off('click').on('click', function(evt){
+            var action = $(evt.target).attr("value");
+            if (action == 'thin') {
+                $("#track-type").hide();
+                $("#track-number-particles").show();
+            }
+            else {
+                $("#track-type").hide();
+                var trackID = task.trackLayers.length - 1;
+                $("#track_bar_" + trackID).css("width", "95%");
+                task.step = "start-exit";
+                $("#btn-add-track").show();
+                addTrack(task);
+            }
+        });
+
+        $("#save-track-number-particles").off('click').on('click', function(){
+            var trackID = task.trackLayers.length - 1;
+            task.currentTrack.n_particles = parseInt($("#input-track-number-particles").val());
+            addTrack(task);
+            console.log(JSON.stringify(task.tracks));
+            $("#track_bar_" + trackID).css("width", "95%");
+            $("#btn-add-track").show();
+            $("#track-number-particles").hide();
+            task.step = "start-exit";
         });
          
 
