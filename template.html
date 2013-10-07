@@ -264,6 +264,10 @@ pybossa.presentTask(function(task, deferred) {
 
         task.frame = 0;
 
+        $("#tracks").html("");
+        $("#current_frame").text("0");
+        $(".btn-answer").hide();
+
         image.on('mousedown', function () {
             if ((task.step == "start-exit") && (task.trackLayers.length > 0)) {
                 var index = task.trackLayers.length - 1;
@@ -422,10 +426,15 @@ pybossa.presentTask(function(task, deferred) {
         $("#question").html(task.info.question);
         $('#task-id').html(task.id);
         $('.btn-answer').off('click').on('click', function(evt) {
-            var answer = $(evt.target).attr("value");
-            if (answer == 'save') {
-                console.log(task.tracks);
-                pybossa.saveTask(task.id, task.tracks).done(function() {
+            var action = $(evt.target).attr("value");
+            if (action == 'save') {
+                var answer = [];
+                for(i=0;i<task.tracks.length;i++){
+                    if (task.tracks[i] != null) {
+                        answer.push(task.tracks[i]);
+                    }
+                }
+                pybossa.saveTask(task.id, answer).done(function() {
                     deferred.resolve();
                 });
                 $("#loading").fadeIn(500);
