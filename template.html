@@ -1,10 +1,5 @@
 <script src="http://d3lp1msu2r81bx.cloudfront.net/kjs/js/lib/kinetic-v4.5.5.min.js"></script>
 <script src="//cdnjs.cloudflare.com/ajax/libs/mousetrap/1.2.2/mousetrap.min.js"></script>
-<style>
-    #canvas {
-        cursor: crosshair;
-    }
-</style>
 <div class="row">
     <!-- Success and Error Messages for the user --> 
     <div class="span6 offset2" style="height:50px">
@@ -45,28 +40,22 @@
         <h1 id="question">Question</h1> <!-- The question will be loaded here -->
 
 
-        <div id="controls" class="btn-group" style="margin-top:5px;"> <!-- Start DIV for the control buttons -->
-            <button class="btn btn-control" value='previous_frame'><i class="icon-backward"></i> Previous frame</button>
-            <button class="btn btn-control" value='next_frame'><i class="icon-forward"></i> Next frame</button>
-        </div> <!-- Start DIV for the control buttons -->
-        <br/> 
-        <p> Current frame  <span id="current_frame" class="badge badge-warning">0</span></p>
 
         <p class="lead"> You have found the following tracks</p> 
-        <div id="addTrack"> <!-- Start DIV for the control buttons -->
-            <button id="btn-add-track" class="btn btn-add-track" value="add_track"><i class="icon icon-plus"></i> Add a track</button>
+        <div id="addTrack" style="padding-bottom: 15px;"> <!-- Start DIV for the control buttons -->
+            <button id="btn-add-track" class="btn btn-info btn-add-track" value="add_track"><i class="icon icon-plus"></i> Add a track</button>
         </div>
 
         <p id="track-start" style="display:none"> <strong>Mark the start of the current track</strong></p>
         <p id="track-exit" style="display:none"> <strong>Mark the exit of the current track</strong></p>
-        <div id="track-type" style="display:none"> 
+        <div id="track-type" style="display:none; padding-bottom:15px;"> 
             <p><strong>Can you count the number of particles in the track?</strong></p>
             <div class="btn-group">
                 <button class="btn btn-mini track-type" value="thin"> Yes</button>
                 <button class="btn btn-mini track-type" value="fat"> No</button>
             </div>
         </div>
-        <div id="track-number-particles" style="display:none"> 
+        <div id="track-number-particles" style="display:none; padding-bottom:15px;"> 
             <p>How many particles do you count?</p>
             <div class="input-append">
                 <input id="input-track-number-particles" class="span1" type="text"></input>
@@ -76,7 +65,8 @@
 
         <div id="tracks">
         </div>
-        <button class="btn btn-answer" value='save'><i class="icon-save"></i> Save drawn tracks</button>
+
+        <button id="save-tracks" class="btn btn-answer" value='save' style="display:none"><i class="icon-save"></i> Save drawn tracks</button>
         <!-- Feedback items for the user -->
         <p>You are working now on task: <span id="task-id" class="label label-warning">#</span></p>
         <p>You have completed: <span id="done" class="label label-info"></span> tasks from
@@ -91,7 +81,7 @@
             load the comments, if any, for the given task
         -->
         <div id="disqus_show_btn" style="margin-top:5px;">
-            <button class="btn btn-primary btn-large btn-disqus" onclick="loadDisqus()"><i class="icon-comments"></i> Show comments</button>
+            <button class="btn btn-inverse btn-disqus" onclick="loadDisqus()"><i class="icon-comments"></i> Show comments</button>
             <button class="btn btn-large btn-disqus" onclick="loadDisqus()" style="display:none"><i class="icon-comments"></i> Hide comments</button>
         </div><!-- End of Disqus Button section -->
         <!-- Disqus thread for the given task -->
@@ -99,6 +89,13 @@
     </div><!-- End of Question and Submission DIV (column) -->
     <div class="span6"><!-- Start of Photo DIV (column) -->
         <div id="canvas"></div>
+        <div id="controls" class="btn-group" style="margin-top:5px;"> <!-- Start DIV for the control buttons -->
+            <button class="btn btn-control" value='previous_frame'><i class="icon-backward"></i> Previous frame</button>
+            <button class="btn btn-control" value='next_frame'><i class="icon-forward"></i> Next frame</button>
+        </div> <!-- Start DIV for the control buttons -->
+        <br/> 
+        <p> Current frame  <span id="current_frame" class="badge badge-warning">0</span></p>
+
     </div><!-- End of Photo DIV (columnt) -->
 </div><!-- End of Skeleton Row -->
 
@@ -156,6 +153,7 @@ function addTrack(task){
     task.currentTrack.exit.y = -1;
     task.currentTrack.exit.z = -1;
     task.currentTrack.n_particles = -1;
+    $("#save-tracks").show();
     }
 }
 
@@ -167,7 +165,7 @@ pybossa.taskLoaded(function(task, deferred) {
         task.currentTrack = {entry:{x:-1, y:-1, z:-1}, exit:{x:-1, y:-1, z:-1}, n_particles:-1};
         task.tracks = [];
         task.trackLayers = [];
-        task.step = "start-exit";
+        task.step = "add-track";
         deferred.resolve(task);
     }
     else {
@@ -267,7 +265,7 @@ pybossa.presentTask(function(task, deferred) {
         task.frame = 0;
 
         image.on('mousedown', function () {
-            if (task.step == "start-exit") {
+            if ((task.step == "start-exit") && (task.trackLayers.length > 0)) {
                 var index = task.trackLayers.length - 1;
                 var mousePos = task.stage.getMousePosition();
                 var circle = new Kinetic.Circle({
@@ -300,7 +298,6 @@ pybossa.presentTask(function(task, deferred) {
                     }
                 }
 
-
                 //task.layer.add(circle);
                 task.trackLayers[index].add(circle);
                 task.trackLayers[index].draw();
@@ -321,6 +318,8 @@ pybossa.presentTask(function(task, deferred) {
 
             if (action == 'add_track') {
                 $("#btn-add-track").hide();
+                task.step = "start-exit";
+                $("#canvas").css("cursor", "crosshair");
                 // Show action to do
                 $("#track-start").show();
                 // Change color per track
@@ -338,7 +337,7 @@ pybossa.presentTask(function(task, deferred) {
                     trackID = 0;
                 }
                 var track = $("<div/>", {id: "track_" + trackID,
-                                         class: 'progress progress-info'});
+                                         class: 'progress progress-info progress-striped '});
                 var bar = $("<div/>", {id: "track_bar_" + trackID, class: 'bar'});
                 bar.css("width", "0%");
                 track.append(bar);
@@ -368,7 +367,8 @@ pybossa.presentTask(function(task, deferred) {
                 $("#track-type").hide();
                 var trackID = task.trackLayers.length - 1;
                 $("#track_bar_" + trackID).css("width", "95%");
-                task.step = "start-exit";
+                task.step = "add-track";
+                $("#canvas").css("cursor", "default");
                 $("#btn-add-track").show();
                 addTrack(task);
             }
@@ -382,7 +382,8 @@ pybossa.presentTask(function(task, deferred) {
             $("#track_bar_" + trackID).css("width", "95%");
             $("#btn-add-track").show();
             $("#track-number-particles").hide();
-            task.step = "start-exit";
+            task.step = "add-track";
+            $("#canvas").css("cursor", "default");
         });
          
 
