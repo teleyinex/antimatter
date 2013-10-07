@@ -29,6 +29,19 @@
     </div> <!-- End Success and Error Messages for the user -->
 </div> <!-- End of Row -->
 
+<div id="shortcuts" class="modal hide fade">
+    <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h3>Keyboard Shortcuts</h3>
+    </div>
+    <div class="modal-body">
+        <p>You can use the left <i class="icon icon-long-arrow-left"></i> and right <i class="icon icon-long-arrow-right"></i> arrow keys of your keyboard to move back and forward the current frame of the images. Enjoy!!!</p>
+    </div>
+    <div class="modal-footer">
+        <a href="#" class="btn btn-primary" data-dismiss="modal" >Got it!</a>
+    </div>
+</div>
+
 <!--
     Task DOM for loading the Flickr Images
     It uses the class="skeleton" to identify the elements that belong to the
@@ -140,12 +153,7 @@ function loadUserProgress() {
     });
 }
 
-function addTrack(task){
-    if ((task.currentTrack.entry.x != -1) && (task.currentTrack.exit.x != -1)){
-    var newTrack = $.extend(true, {}, task.currentTrack);
-    // Unscale the points to save them with the real picture size
-    newTrack = unscale(newTrack, $("#canvas").width(),$("#canvas").height());
-    task.tracks.push(newTrack);
+function resetCurrentTrack(task){
     task.currentTrack.entry.x = -1;
     task.currentTrack.entry.y = -1;
     task.currentTrack.entry.z = -1;
@@ -153,6 +161,15 @@ function addTrack(task){
     task.currentTrack.exit.y = -1;
     task.currentTrack.exit.z = -1;
     task.currentTrack.n_particles = -1;
+}
+
+function addTrack(task){
+    if ((task.currentTrack.entry.x != -1) && (task.currentTrack.exit.x != -1)){
+    var newTrack = $.extend(true, {}, task.currentTrack);
+    // Unscale the points to save them with the real picture size
+    newTrack = unscale(newTrack, $("#canvas").width(),$("#canvas").height());
+    task.tracks.push(newTrack);
+    resetCurrentTrack(task);
     $("#save-tracks").show();
     }
 }
@@ -355,6 +372,14 @@ pybossa.presentTask(function(task, deferred) {
                     delete task.trackLayers[trackID];
                     delete task.tracks[trackID];
                     $("#track_" + trackID).remove();
+                    // Restore Add button
+                    $("#btn-add-track").show();
+                    $("#canvas").css("cursor", "default");
+                    task.step = "add-track";
+                    resetCurrentTrack(task);
+                    $("#track-start").hide();
+                    $("#track-exit").hide();
+                    $("#track-type").hide();
                 });
                 track.append(btn);
                 $("#tracks").prepend(track);
@@ -457,4 +482,5 @@ pybossa.presentTask(function(task, deferred) {
 });
 
 pybossa.run('antimatterbeta');
+$('#shortcuts').modal('show')
 </script>
