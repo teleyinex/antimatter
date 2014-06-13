@@ -386,7 +386,12 @@ function fetch(task) {
     for (var i=0; i<task.tracks.length; ++i) {
         var track = task.tracks[i];
         var color = new THREE.Color(colors[track.colorIndex]);
-        var material = new THREE.LineBasicMaterial({color: color, opacity: 1, linewidth: 2});
+        var linewidth = 2;
+        // Fat track
+        if (track.n_particles > 0) {
+            linewidth = 5;
+        }
+        var material = new THREE.LineBasicMaterial({color: color, opacity: 1, linewidth: linewidth});
         var a = convert(track.entry);
         var b = convert(track.exit);
         var geometry = new THREE.Geometry();
