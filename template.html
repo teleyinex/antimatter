@@ -81,8 +81,8 @@
 
         <p class="lead"> You have found the following tracks</p> 
         <div id="addTrack" style="padding-bottom: 15px;"> <!-- Start DIV for the control buttons -->
-            <button id="btn-add-track" class="btn btn-default btn-add-track" value="add_track"><i class="icon icon-plus"></i> Add a track</button>
-            <button id="preview" class="btn btn-default btn-add-track" value="add_track"><i class="icon icon-plus"></i> Preview</button>
+            <button id="btn-add-track" class="btn btn-default btn-add-track" value="add_track"><i class="fa fa-plus"></i> Add a track</button>
+            <button id="btn-preview-3d" class="btn btn-default" value="add_track" style="display:none;">Preview</button>
         </div>
 
         <p id="track-start" style="display:none"> <strong>Mark the start of the current track</strong></p>
@@ -567,6 +567,7 @@ pybossa.presentTask(function(task, deferred) {
                 task.step = "add-track";
                 $("#canvas").css("cursor", "default");
                 $("#btn-add-track").show();
+                $("#btn-preview-3d").show();
                 addTrack(task);
             }
         });
@@ -616,7 +617,8 @@ pybossa.presentTask(function(task, deferred) {
             }
         });
 
-        $("#preview").click(function(){
+        $("#btn-preview-3d").click(function(){
+                $("#antimatter-visualization").html("");
                 init();
                 fetch(task);
                 animate();
