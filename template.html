@@ -81,8 +81,7 @@
             </div>
         </div>
 
-        <div id="tracks">
-        </div>
+        <div id="tracks"></div>
 
         <button id="save-tracks" class="btn btn-answer" value='save' style="display:none"><i class="icon-save"></i> Save drawn tracks</button>
         <!-- Feedback items for the user -->
@@ -90,8 +89,8 @@
         <p>You have completed: <span id="done" class="label label-info"></span> tasks from
         <!-- Progress bar for the user -->
         <span id="total" class="label label-inverse"></span></p>
-        <div class="progress progress-striped">
-            <div id="progress" rel="tooltip" title="#" class="bar" style="width: 0%;"></div>
+        <div class="progress">
+            <div id="progress" role="progressbar" rel="tooltip" title="#" class="progress-bar" style="width: 0%;"></div>
         </div>
         <!-- 
             This application uses Disqus to allow users to provide some feedback.
@@ -363,14 +362,15 @@ pybossa.presentTask(function(task, deferred) {
                     trackID = 0;
                 }
                 var track = $("<div/>", {id: "track_" + trackID,
-                                         class: 'progress progress-info progress-striped '});
-                var bar = $("<div/>", {id: "track_bar_" + trackID, class: 'bar'});
+                                         class: 'progress'});
+                var bar = $("<div/>", {id: "track_bar_" + trackID, class: 'progress-bar'});
                 bar.css("width", "0%");
+                bar.css("background-color", colors[colorIndex]);
                 track.append(bar);
                 //track.text("Trac " + trackID);
                 var btn = $("<button/>", {id: "track_" + trackID,
-                                          class: 'delete-track btn btn-mini btn-danger pull-right'});
-                btn.html("<i class='icon icon-remove'></i>");
+                                          class: 'delete-track btn btn-xs pull-right'});
+                btn.html("<i class='fa fa-times'></i>");
                 btn.off('click').on('click', function(){
                     var trackID = parseInt($(this).attr("id").split("track_")[1]);
                     task.trackLayers[trackID].destroy();
@@ -386,6 +386,7 @@ pybossa.presentTask(function(task, deferred) {
                     $("#track-exit").hide();
                     $("#track-type").hide();
                 });
+                btn.attr("style", "margin-top:0px; width:25px; height:25px;");
                 track.append(btn);
                 $("#tracks").prepend(track);
             }
