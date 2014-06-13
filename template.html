@@ -190,6 +190,7 @@ function resetCurrentTrack(task){
 
 function addTrack(task){
     if ((task.currentTrack.entry.x != -1) && (task.currentTrack.exit.x != -1)){
+    task.currentTrack.colorIndex = colorIndex;
     var newTrack = $.extend(true, {}, task.currentTrack);
     // Unscale the points to save them with the real picture size
     newTrack = unscale(newTrack, $("#canvas").width(),$("#canvas").height());
@@ -295,7 +296,6 @@ var camera_pos = {
 // Color palette (based on Tron: http://www.colourlovers.com/palette/1406402/Tron_Legacy_2)
 var color_background = 0x0C141F;
 var color_mesh = 0x6FC3DF;
-// var color_lines = 0xDF740C; // orange
 var color_lines = 0xFFE64D; // yellow
 var color_textshadow = "#0C141F";
 
@@ -383,9 +383,10 @@ function convert(pos) {
 }
 
 function fetch(task) {
-    var material = new THREE.LineBasicMaterial({color: color_lines, opacity: 1, linewidth: 2});
     for (var i=0; i<task.tracks.length; ++i) {
         var track = task.tracks[i];
+        var color = new THREE.Color(colors[track.colorIndex]);
+        var material = new THREE.LineBasicMaterial({color: color, opacity: 1, linewidth: 2});
         var a = convert(track.entry);
         var b = convert(track.exit);
         var geometry = new THREE.Geometry();
