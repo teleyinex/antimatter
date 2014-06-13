@@ -384,21 +384,23 @@ function convert(pos) {
 
 function fetch(task) {
     for (var i=0; i<task.tracks.length; ++i) {
-        var track = task.tracks[i];
-        var color = new THREE.Color(colors[track.colorIndex]);
-        var linewidth = 2;
-        // Fat track
-        if (track.n_particles > 0) {
-            linewidth = 5;
+        if (task.tracks[i] != null) {
+            var track = task.tracks[i];
+            var color = new THREE.Color(colors[track.colorIndex]);
+            var linewidth = 2;
+            // Fat track
+            if (track.n_particles > 0) {
+                linewidth = 5;
+            }
+            var material = new THREE.LineBasicMaterial({color: color, opacity: 1, linewidth: linewidth});
+            var a = convert(track.entry);
+            var b = convert(track.exit);
+            var geometry = new THREE.Geometry();
+            geometry.vertices.push(new THREE.Vector3(a.x, a.y, a.z));
+            geometry.vertices.push(new THREE.Vector3(b.x, b.y, b.z));
+            var line = new THREE.Line(geometry, material);
+            scene.add(line);
         }
-        var material = new THREE.LineBasicMaterial({color: color, opacity: 1, linewidth: linewidth});
-        var a = convert(track.entry);
-        var b = convert(track.exit);
-        var geometry = new THREE.Geometry();
-        geometry.vertices.push(new THREE.Vector3(a.x, a.y, a.z));
-        geometry.vertices.push(new THREE.Vector3(b.x, b.y, b.z));
-        var line = new THREE.Line(geometry, material);
-        scene.add(line);
     }
 
 }
