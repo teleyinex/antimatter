@@ -386,15 +386,13 @@ function fetch(task) {
     var material = new THREE.LineBasicMaterial({color: color_lines, opacity: 1, linewidth: 2});
     for (var i=0; i<task.tracks.length; ++i) {
         var track = task.tracks[i];
-        for (var j=0; j<track.length; ++j) {
-            var a = convert(track[j].entry);
-            var b = convert(track[j].exit);
-            var geometry = new THREE.Geometry();
-            geometry.vertices.push(new THREE.Vector3(a.x, a.y, a.z));
-            geometry.vertices.push(new THREE.Vector3(b.x, b.y, b.z));
-            var line = new THREE.Line(geometry, material);
-            scene.add(line);
-        }
+        var a = convert(track.entry);
+        var b = convert(track.exit);
+        var geometry = new THREE.Geometry();
+        geometry.vertices.push(new THREE.Vector3(a.x, a.y, a.z));
+        geometry.vertices.push(new THREE.Vector3(b.x, b.y, b.z));
+        var line = new THREE.Line(geometry, material);
+        scene.add(line);
     }
 
 }
