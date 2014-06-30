@@ -83,6 +83,7 @@
         <div id="addTrack" style="padding-bottom: 15px;"> <!-- Start DIV for the control buttons -->
             <button id="btn-add-track" class="btn btn-default btn-add-track" value="add_track"><i class="fa fa-plus"></i> Add a track</button>
             <button id="btn-preview-3d" class="btn btn-default" value="add_track" style="display:none;">Preview</button>
+            <button id="btn-add-collision" class="btn btn-default btn-add-track" value="add_collision" style="display:none;">Add Collision</button>
         </div>
 
         <p id="track-start" style="display:none"> <strong>Mark the start of the current track</strong></p>
@@ -103,6 +104,11 @@
         </div>
 
         <div id="tracks"></div>
+
+        <hr>
+        <div id="collisions" style="display:none">
+            <h2>Collisions</h2>
+        </div>
 
         <button id="save-tracks" class="btn btn-default btn-answer" value='save' style="display:none"><i class="icon-save"></i> Save drawn tracks</button>
         <!-- Feedback items for the user -->
@@ -165,7 +171,13 @@ var colors = ['rgb(31,119,180)', 'rgb(255,127,14)', 'rgb(44,160,44)', 'rgb(214,3
               'rgb(199,233,192)'
              ];
 
+var colorsCollision = ['rgb(41,19,160)', 'rgb(55,12,143)', 'rgb(144,60,24)', 'rgb(24,139,50)',
+              'rgb(18,123,29)', 'rgb(127,19,94)', 'rgb(18,89,134)', 'rgb(223,90, 107)',
+              'rgb(19,113,19)'
+             ];
+
 var colorIndex = 0;
+var colorCollisionIndex = 0;
 
 function loadUserProgress() {
     pybossa.userProgress('antimatterbeta').done(function(data){
@@ -188,6 +200,15 @@ function resetCurrentTrack(task){
     task.currentTrack.n_particles = -1;
 }
 
+function resetCurrentCollision(task){
+    task.currentCollision.entry.x = -1;
+    task.currentCollision.entry.y = -1;
+    task.currentCollision.entry.z = -1;
+    task.currentCollision.exit.x = -1;
+    task.currentCollision.exit.y = -1;
+    task.currentCollision.exit.z = -1;
+}
+
 function addTrack(task){
     if ((task.currentTrack.entry.x != -1) && (task.currentTrack.exit.x != -1)){
     task.currentTrack.colorIndex = colorIndex;
@@ -200,12 +221,27 @@ function addTrack(task){
     }
 }
 
+function addCollision(task){
+    if ((task.currentCollision.entry.x != -1) && (task.currentCollision.exit.x != -1)){
+    task.currentCollision.colorIndex = colorCollisionIndex;
+    var newCollision = $.extend(true, {}, task.currentCollision);
+    // Unscale the points to save them with the real picture size
+    newCollision = unscale(newCollision, $("#canvas").width(),$("#canvas").height());
+    task.collisions.push(newCollision);
+    resetCurrentCollision(task);
+    $("#save-tracks").show();
+    }
+}
+
 pybossa.taskLoaded(function(task, deferred) {
     if ( !$.isEmptyObject(task) ) {
         task.period = 20;
         task.maxPictures = 40;
         task.minPictures = 0;
         task.currentTrack = {entry:{x:-1, y:-1, z:-1}, exit:{x:-1, y:-1, z:-1}, n_particles:-1};
+        task.currentCollision = {entry:{x:-1, y:-1, z:-1}, exit:{x:-1, y:-1, z:-1}};
+        task.collisions = [];
+        task.collisionLayers = [];
         task.tracks = [];
         task.trackLayers = [];
         task.step = "add-track";
@@ -491,6 +527,33 @@ pybossa.presentTask(function(task, deferred) {
                 task.trackLayers[index].draw();
                 //task.layer.draw();
             }
+
+            if ((task.step == "add-collision") && (task.collisionLayers.length >= 0)) {
+                var index = task.collisionLayers.length - 1;
+                console.log(index);
+                var mousePos = task.stage.getMousePosition();
+                var star = new Kinetic.Star({
+                    x: mousePos.x,
+                    y: mousePos.y,
+                    numPoints:5,
+                    innerRadius: 3,
+                    outerRadius: 5,
+                    fill: colorsCollision[colorCollisionIndex],
+                    stroke: colorsCollision[colorCollisionIndex],
+                    strokeWidth: 1
+                });
+                task.currentCollision.entry.x = mousePos.x;
+                task.currentCollision.entry.y = mousePos.y;
+                task.currentCollision.entry.z = 0;
+                task.currentCollision.exit.x = mousePos.x;
+                task.currentCollision.exit.y = mousePos.y;
+                task.currentCollision.exit.z = 99;
+
+                task.collisionLayers[index].add(star);
+                addCollision(task);
+                $("#collision_bar_" + index).css("width", "95%");
+                task.collisionLayers[index].draw();
+            }
         });
         task.imageObj.src = task.info.url + "00.jpg";
 
@@ -530,6 +593,7 @@ pybossa.presentTask(function(task, deferred) {
                 if (trackID == -1) {
                     trackID = 0;
                 }
+
                 var track = $("<div/>", {id: "track_" + trackID,
                                          class: 'progress'});
                 var bar = $("<div/>", {id: "track_bar_" + trackID, class: 'progress-bar'});
@@ -558,6 +622,59 @@ pybossa.presentTask(function(task, deferred) {
                 btn.attr("style", "margin-top:0px; width:25px; height:25px;");
                 track.append(btn);
                 $("#tracks").prepend(track);
+
+            }
+            if (action == 'add_collision') {
+                // Collisions
+                var tmpCollision = new Kinetic.Layer();
+                task.collisionLayers.push(tmpCollision);
+                task.stage.add(tmpCollision);
+
+                var collisionID = task.collisionLayers.length - 1;
+                if (collisionID == -1) {
+                    collisionID = 0;
+                }
+
+                if (colorCollisionIndex < colorsCollision.length) {
+                    colorCollisionIndex += 1;
+                }
+                else {
+                    colorCollisionIndex = 0;
+                }
+
+
+                var collision = $("<div/>", {id: "collision_" + collisionID,
+                                         class: 'progress'});
+                var bar = $("<div/>", {id: "collision_bar_" + collisionID, class: 'progress-bar'});
+                bar.css("width", "0%");
+                bar.css("background-color", colorsCollision[colorCollisionIndex]);
+                collision.append(bar);
+                //track.text("Trac " + trackID);
+                var btn = $("<button/>", {id: "collision_" + collisionID,
+                                          class: 'delete-collision btn btn-xs pull-right'});
+                btn.html("<i class='fa fa-times'></i>");
+                btn.off('click').on('click', function(){
+                    var collsionID = parseInt($(this).attr("id").split("collision_")[1]);
+                    task.collisionLayers[collisionID].destroy();
+                    delete task.collisionLayers[collisionID];
+                    delete task.collisions[collisionID];
+                    $("#collision_" + collisionID).remove();
+                    // Restore Add button
+                    if (task.trackLayers.length >= 2) {
+                        $("#btn-add-collision").show();
+                    }
+                    $("#canvas").css("cursor", "default");
+                    task.step = "add-track";
+                    //resetCurrentTrack(task);
+                    //$("#track-start").hide();
+                    //$("#track-exit").hide();
+                    //$("#track-type").hide();
+                });
+                btn.attr("style", "margin-top:0px; width:25px; height:25px;");
+                collision.append(btn);
+                $("#collisions").append(collision);
+                task.step = 'add-collision';
+                $("#collisions").show();
             }
         });
 
@@ -574,7 +691,16 @@ pybossa.presentTask(function(task, deferred) {
                 task.step = "add-track";
                 $("#canvas").css("cursor", "default");
                 $("#btn-add-track").show();
-                $("#btn-preview-3d").show();
+                if (task.trackLayers.length >= 2) {
+                    $("#btn-preview-3d").show();
+                    $("#btn-add-collision").show();
+                    $("#collisions").show();
+                }
+                else {
+                    $("#btn-preview-3d").hide();
+                    $("#btn-add-collision").hide();
+                    $("#collisions").hide();
+                }
                 addTrack(task);
             }
         });
@@ -638,15 +764,22 @@ pybossa.presentTask(function(task, deferred) {
         $('.btn-answer').off('click').on('click', function(evt) {
             var action = $(evt.target).attr("value");
             if (action == 'save') {
-                var answer = [];
+                var answer = {'tracks': [], 'collisions': []};
                 for(i=0;i<task.tracks.length;i++){
                     if (task.tracks[i] != null) {
-                        answer.push(task.tracks[i]);
+                        answer.tracks.push(task.tracks[i]);
                     }
                 }
-                pybossa.saveTask(task.id, answer).done(function() {
-                    deferred.resolve();
-                });
+                for(i=0;i<task.collisions.length;i++){
+                    if (task.collisions[i] != null) {
+                        answer.collisions.push(task.collisions[i]);
+                    }
+                }
+
+                console.log(answer);
+                //pybossa.saveTask(task.id, answer).done(function() {
+                //    deferred.resolve();
+                //});
                 $("#loading").fadeIn(500);
                 if ($("#disqus_thread").is(":visible")) {
                     $('#disqus_thread').toggle();
