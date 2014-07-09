@@ -83,7 +83,7 @@
         <div id="addTrack" style="padding-bottom: 15px;"> <!-- Start DIV for the control buttons -->
             <button id="btn-add-track" class="btn btn-default btn-add-track" value="add_track"><i class="fa fa-plus"></i> Add a track</button>
             <button id="btn-preview-3d" class="btn btn-default" value="add_track" style="display:none;">Preview</button>
-            <button id="btn-add-collision" class="btn btn-default btn-add-track" value="add_collision" style="display:none;">Add Collision</button>
+            <button id="btn-add-intersection" class="btn btn-default btn-add-track" value="add_intersection" style="display:none;">Add Intersection</button>
         </div>
 
         <p id="track-start" style="display:none"> <strong>Choose the frame in which the beginning is best focused</strong></p>
@@ -106,8 +106,8 @@
         <div id="tracks"></div>
 
         <hr>
-        <div id="collisions" style="display:none">
-            <h2>Collisions</h2>
+        <div id="intersections" style="display:none">
+            <h2>Intersections</h2>
         </div>
 
         <button id="save-tracks" class="btn btn-default btn-answer" value='save' style="display:none"><i class="icon-save"></i> Save drawn tracks</button>
@@ -171,13 +171,13 @@ var colors = ['rgb(31,119,180)', 'rgb(255,127,14)', 'rgb(44,160,44)', 'rgb(214,3
               'rgb(199,233,192)'
              ];
 
-var colorsCollision = ['rgb(41,19,160)', 'rgb(55,12,143)', 'rgb(144,60,24)', 'rgb(24,139,50)',
+var colorsIntersection = ['rgb(41,19,160)', 'rgb(55,12,143)', 'rgb(144,60,24)', 'rgb(24,139,50)',
               'rgb(18,123,29)', 'rgb(127,19,94)', 'rgb(18,89,134)', 'rgb(223,90, 107)',
               'rgb(19,113,19)'
              ];
 
 var colorIndex = 0;
-var colorCollisionIndex = 0;
+var colorIntersectionIndex = 0;
 
 function loadUserProgress() {
     pybossa.userProgress('antimatterbeta').done(function(data){
@@ -200,13 +200,13 @@ function resetCurrentTrack(task){
     task.currentTrack.n_particles = -1;
 }
 
-function resetCurrentCollision(task){
-    task.currentCollision.entry.x = -1;
-    task.currentCollision.entry.y = -1;
-    task.currentCollision.entry.z = -1;
-    task.currentCollision.exit.x = -1;
-    task.currentCollision.exit.y = -1;
-    task.currentCollision.exit.z = -1;
+function resetCurrentIntersection(task){
+    task.currentIntersection.entry.x = -1;
+    task.currentIntersection.entry.y = -1;
+    task.currentIntersection.entry.z = -1;
+    task.currentIntersection.exit.x = -1;
+    task.currentIntersection.exit.y = -1;
+    task.currentIntersection.exit.z = -1;
 }
 
 function addTrack(task){
@@ -220,25 +220,25 @@ function addTrack(task){
     $("#save-tracks").show();
     if (task.trackLayers.length >= 2) {
         $("#btn-preview-3d").show();
-        $("#btn-add-collision").show();
-        $("#collisions").show();
+        $("#btn-add-intersection").show();
+        $("#intersections").show();
     }
     else {
         $("#btn-preview-3d").hide();
-        $("#btn-add-collision").hide();
-        $("#collisions").hide();
+        $("#btn-add-intersection").hide();
+        $("#intersections").hide();
     }
     }
 }
 
-function addCollision(task){
-    if ((task.currentCollision.entry.x != -1) && (task.currentCollision.exit.x != -1)){
-    task.currentCollision.colorIndex = colorCollisionIndex;
-    var newCollision = $.extend(true, {}, task.currentCollision);
+function addIntersection(task){
+    if ((task.currentIntersection.entry.x != -1) && (task.currentIntersection.exit.x != -1)){
+    task.currentIntersection.colorIntersectionIndex = colorIntersectionIndex;
+    var newIntersection = $.extend(true, {}, task.currentIntersection);
     // Unscale the points to save them with the real picture size
-    newCollision = unscale(newCollision, $("#canvas").width(),$("#canvas").height());
-    task.collisions.push(newCollision);
-    resetCurrentCollision(task);
+    newIntersection = unscale(newIntersection, $("#canvas").width(),$("#canvas").height());
+    task.intersections.push(newIntersection);
+    resetCurrentIntersection(task);
     $("#save-tracks").show();
     }
 }
@@ -249,9 +249,9 @@ pybossa.taskLoaded(function(task, deferred) {
         task.maxPictures = 40;
         task.minPictures = 0;
         task.currentTrack = {entry:{x:-1, y:-1, z:-1}, exit:{x:-1, y:-1, z:-1}, n_particles:-1};
-        task.currentCollision = {entry:{x:-1, y:-1, z:-1}, exit:{x:-1, y:-1, z:-1}};
-        task.collisions = [];
-        task.collisionLayers = [];
+        task.currentIntersection = {entry:{x:-1, y:-1, z:-1}, exit:{x:-1, y:-1, z:-1}};
+        task.intersections = [];
+        task.intersectionLayers = [];
         task.tracks = [];
         task.trackLayers = [];
         task.step = "add-track";
@@ -449,6 +449,23 @@ function fetch(task) {
         }
     }
 
+    for (var i=0; i<task.intersections.length; ++i) {
+        if (task.intersections[i] != null) {
+            var track = task.intersections[i];
+            var color = new THREE.Color(colorsIntersection[track.colorIntersectionIndex]);
+            var linewidth = 8;
+            var material = new THREE.LineBasicMaterial({color: color, opacity: 1, linewidth: linewidth});
+            var a = convert(track.entry);
+            var b = convert(track.exit);
+            var geometry = new THREE.Geometry();
+            geometry.vertices.push(new THREE.Vector3(a.x, a.y, a.z));
+            geometry.vertices.push(new THREE.Vector3(b.x, b.y, b.z));
+            var line = new THREE.Line(geometry, material);
+            scene.add(line);
+        }
+    }
+
+
 }
 
 function animate() {
@@ -543,8 +560,8 @@ pybossa.presentTask(function(task, deferred) {
                 //task.layer.draw();
             }
 
-            if ((task.step == "add-collision") && (task.collisionLayers.length >= 0)) {
-                var index = task.collisionLayers.length - 1;
+            if ((task.step == "add-intersection") && (task.intersectionLayers.length >= 0)) {
+                var index = task.intersectionLayers.length - 1;
                 console.log(index);
                 var mousePos = task.stage.getMousePosition();
                 var star = new Kinetic.Star({
@@ -553,21 +570,21 @@ pybossa.presentTask(function(task, deferred) {
                     numPoints:5,
                     innerRadius: 3,
                     outerRadius: 5,
-                    fill: colorsCollision[colorCollisionIndex],
-                    stroke: colorsCollision[colorCollisionIndex],
+                    fill: colorsIntersection[colorIntersectionIndex],
+                    stroke: colorsIntersection[colorIntersectionIndex],
                     strokeWidth: 1
                 });
-                task.currentCollision.entry.x = mousePos.x;
-                task.currentCollision.entry.y = mousePos.y;
-                task.currentCollision.entry.z = 0;
-                task.currentCollision.exit.x = mousePos.x;
-                task.currentCollision.exit.y = mousePos.y;
-                task.currentCollision.exit.z = 99;
+                task.currentIntersection.entry.x = mousePos.x;
+                task.currentIntersection.entry.y = mousePos.y;
+                task.currentIntersection.entry.z = 0;
+                task.currentIntersection.exit.x = mousePos.x;
+                task.currentIntersection.exit.y = mousePos.y;
+                task.currentIntersection.exit.z = 39;
 
-                task.collisionLayers[index].add(star);
-                addCollision(task);
-                $("#collision_bar_" + index).css("width", "95%");
-                task.collisionLayers[index].draw();
+                task.intersectionLayers[index].add(star);
+                addIntersection(task);
+                $("#intersection_bar_" + index).css("width", "95%");
+                task.intersectionLayers[index].draw();
             }
         });
         task.imageObj.src = task.info.url + "00.jpg";
@@ -618,7 +635,7 @@ pybossa.presentTask(function(task, deferred) {
                 //track.text("Trac " + trackID);
                 var btn = $("<button/>", {id: "track_" + trackID,
                                           class: 'delete-track btn btn-xs pull-right'});
-                btn.html("<i class='fa fa-times'></i>");
+                btn.html("<i class='fa fa-trash-o'></i>");
                 btn.off('click').on('click', function(){
                     var trackID = parseInt($(this).attr("id").split("track_")[1]);
                     task.trackLayers[trackID].destroy();
@@ -639,44 +656,44 @@ pybossa.presentTask(function(task, deferred) {
                 $("#tracks").prepend(track);
 
             }
-            if (action == 'add_collision') {
-                // Collisions
-                var tmpCollision = new Kinetic.Layer();
-                task.collisionLayers.push(tmpCollision);
-                task.stage.add(tmpCollision);
+            if (action == 'add_intersection') {
+                // Intersections
+                var tmpIntersection = new Kinetic.Layer();
+                task.intersectionLayers.push(tmpIntersection);
+                task.stage.add(tmpIntersection);
 
-                var collisionID = task.collisionLayers.length - 1;
-                if (collisionID == -1) {
-                    collisionID = 0;
+                var intersectionID = task.intersectionLayers.length - 1;
+                if (intersectionID == -1) {
+                    intersectionID = 0;
                 }
 
-                if (colorCollisionIndex < colorsCollision.length) {
-                    colorCollisionIndex += 1;
+                if (colorIntersectionIndex < colorsIntersection.length) {
+                    colorIntersectionIndex += 1;
                 }
                 else {
-                    colorCollisionIndex = 0;
+                    colorIntersectionIndex = 0;
                 }
 
 
-                var collision = $("<div/>", {id: "collision_" + collisionID,
+                var intersection = $("<div/>", {id: "intersection_" + intersectionID,
                                          class: 'progress'});
-                var bar = $("<div/>", {id: "collision_bar_" + collisionID, class: 'progress-bar'});
+                var bar = $("<div/>", {id: "intersection_bar_" + intersectionID, class: 'progress-bar'});
                 bar.css("width", "0%");
-                bar.css("background-color", colorsCollision[colorCollisionIndex]);
-                collision.append(bar);
+                bar.css("background-color", colorsIntersection[colorIntersectionIndex]);
+                intersection.append(bar);
                 //track.text("Trac " + trackID);
-                var btn = $("<button/>", {id: "collision_" + collisionID,
-                                          class: 'delete-collision btn btn-xs pull-right'});
+                var btn = $("<button/>", {id: "intersection_" + intersectionID,
+                                          class: 'delete-intersection btn btn-xs pull-right'});
                 btn.html("<i class='fa fa-times'></i>");
                 btn.off('click').on('click', function(){
-                    var collsionID = parseInt($(this).attr("id").split("collision_")[1]);
-                    task.collisionLayers[collisionID].destroy();
-                    delete task.collisionLayers[collisionID];
-                    delete task.collisions[collisionID];
-                    $("#collision_" + collisionID).remove();
+                    var collsionID = parseInt($(this).attr("id").split("intersection_")[1]);
+                    task.intersectionLayers[intersectionID].destroy();
+                    delete task.intersectionLayers[intersectionID];
+                    delete task.intersections[intersectionID];
+                    $("#intersection_" + intersectionID).remove();
                     // Restore Add button
                     if (task.trackLayers.length >= 2) {
-                        $("#btn-add-collision").show();
+                        $("#btn-add-intersection").show();
                     }
                     $("#canvas").css("cursor", "default");
                     task.step = "add-track";
@@ -686,10 +703,10 @@ pybossa.presentTask(function(task, deferred) {
                     //$("#track-type").hide();
                 });
                 btn.attr("style", "margin-top:0px; width:25px; height:25px;");
-                collision.append(btn);
-                $("#collisions").append(collision);
-                task.step = 'add-collision';
-                $("#collisions").show();
+                intersection.append(btn);
+                $("#intersections").append(intersection);
+                task.step = 'add-intersection';
+                $("#intersections").show();
             }
         });
 
@@ -708,13 +725,13 @@ pybossa.presentTask(function(task, deferred) {
                 $("#btn-add-track").show();
                 if (task.trackLayers.length >= 2) {
                     $("#btn-preview-3d").show();
-                    $("#btn-add-collision").show();
-                    $("#collisions").show();
+                    $("#btn-add-intersection").show();
+                    $("#intersections").show();
                 }
                 else {
                     $("#btn-preview-3d").hide();
-                    $("#btn-add-collision").hide();
-                    $("#collisions").hide();
+                    $("#btn-add-intersection").hide();
+                    $("#intersections").hide();
                 }
                 addTrack(task);
             }
@@ -779,15 +796,15 @@ pybossa.presentTask(function(task, deferred) {
         $('.btn-answer').off('click').on('click', function(evt) {
             var action = $(evt.target).attr("value");
             if (action == 'save') {
-                var answer = {'tracks': [], 'collisions': []};
+                var answer = {'tracks': [], 'intersections': []};
                 for(i=0;i<task.tracks.length;i++){
                     if (task.tracks[i] != null) {
                         answer.tracks.push(task.tracks[i]);
                     }
                 }
-                for(i=0;i<task.collisions.length;i++){
-                    if (task.collisions[i] != null) {
-                        answer.collisions.push(task.collisions[i]);
+                for(i=0;i<task.intersections.length;i++){
+                    if (task.intersections[i] != null) {
+                        answer.intersections.push(task.intersections[i]);
                     }
                 }
 
